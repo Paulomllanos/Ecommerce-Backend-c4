@@ -14,7 +14,7 @@ const createProduct = async(req, res) => {
     } catch (error) {
         res.status(500).json({success: false, message: error.message})
     }
-}
+} 
 
 const getProducts = async(req, res) => {
     try {
@@ -24,5 +24,7 @@ const getProducts = async(req, res) => {
         res.status(500).json({success: false, message: error.message})
     }
 }
+
+
 
 module.exports = {getProducts, createProduct}

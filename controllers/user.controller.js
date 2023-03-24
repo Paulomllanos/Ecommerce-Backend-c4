@@ -17,22 +17,14 @@ const createUser = async(req, res) => {
             throw new Error('Email en uso!!!')
         }
 
-        //! Encriptar Password => hashear => un algoritmo que transforma un conjunto de datos en una expresion alfanumerica
-        const salt = crypto.randomBytes(10).toString('hex'); //* salt de cada usario deberia ser unico o casi unico para cada uno
-        const hash = crypto.pbkdf2Sync(req.body.password, salt, 5000, 10, 'sha-512').toString('hex')
-
-        console.log(hash)
-
-
-
-
         //* Guardar informacion en mi base de datos
 
-        const newUser = new User({...req.body, password: hash, salt});
+        const newUser = new User(req.body);
+        newUser.hashPassword(req.body.password);
         await newUser.save();
 
 
-        res.json({success: true, message: "Usuario Creado", info: newUser})
+        res.json({success: true, message: "Usuario Creado", info: newUser._id, token: newUser.generateToken()})
             
     } catch (error) {
         res.json({success: false, message: error.message})
@@ -54,10 +46,19 @@ const editUser = async(req, res) => {
 
     try {
         // throw new Error('error forzado')
-        const {id} = req.params;
+        const {id} = req.auth;
         const contain = req.body;
 
-        const updateUser = await User.findByIdAndUpdate(id, contain, {new: true});
+        const emails = await User.find()
+
+        emails.forEach(userEmail => {
+            if(userEmail.email === contain.email){
+                throw new Error('Email en uso!')
+            }
+        })
+
+
+        const updateUser = await User.findByIdAndUpdate(id, contain, {new: true}).select('-password -salt -isAdmin');
 
         res.json({success: true, msg: "usuario actualizado", updateUser})
     } catch (error) {
@@ -89,17 +90,15 @@ const login = async(req, res) => {
             throw new Error('Usuario no registrado!!!')
         }
 
-        const hash = crypto.pbkdf2Sync(password, user.salt, 5000, 10, 'sha-512').toString('hex')
+        
+        const validatePassword = user.hashValidation(password, user.salt, user.password)
 
-        console.log(user.salt)
-        console.log(hash)
-        console.log(user.password)
 
-        if(user.password !== hash){
-            throw new Error('email o contrasena incorrecta!!!')
+        if(!validatePassword){
+            throw new Error('email o contraseña incorrecta!!!')
         }
 
-        res.json({success: true, msg: 'Has iniciado sesion'})
+        res.json({success: true, msg: 'Has iniciado sesion', token: user.generateToken()})
 
 
     } catch (error) {
@@ -110,4 +109,19 @@ const login = async(req, res) => {
     
 }
 
-module.exports = {createUser, getUsers, editUser, deleteUser, login};
+
+const getUserVerify = async(req, res) => {
+    try {
+        const { id } = req.auth
+
+        const user = await User.findById(id).populate('favoriteProducts').select('-password -salt');
+
+        res.json({success: true, msg: `Informacion de: ${user.email}`, info: user })
+
+    } catch (error) {
+        res.status(500).json({success: false, message: error.message})
+    }
+}
+
+
+module.exports = {createUser, getUsers, editUser, deleteUser, login, getUserVerify};
