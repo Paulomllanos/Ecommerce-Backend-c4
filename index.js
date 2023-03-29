@@ -3,6 +3,7 @@ const userRouter = require("./routes/userRoutes");
 const productRouter = require('./routes/productRoutes')
 
 require('dotenv').config();
+
 //* traemos la coneccion de nuestra base de datos las servidor
 require('./config/database');
 //* Instanciamos express
